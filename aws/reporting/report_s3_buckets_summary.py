@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import boto3
 import common
 from pytz import utc
