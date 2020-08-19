@@ -119,8 +119,8 @@ if __name__ == "__main__":
 
     eips = get_all_eips()
     eips = reformat_eips_data(eips)
-    numberOfEipsDeleted = delete_unassigned_eips(eips)
-    summaryRow['EIPs'] = 'Deleted {} eips'.format(numberOfEipsDeleted)
+    # numberOfEipsDeleted = delete_unassigned_eips(eips)
+    # summaryRow['EIPs'] = 'Deleted {} eips'.format(numberOfEipsDeleted)
     print(allEipsSheet.save_data_to_sheet(eips))
 
     elbs = get_all_elbs()
