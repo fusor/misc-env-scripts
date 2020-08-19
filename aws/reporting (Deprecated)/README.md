@@ -1,3 +1,7 @@
+## (Deprecated)
+
+Please see [New Reporting](../reporting) scripts.
+
 ## To setup dependencies:
 1. $ `virtualenv venv`
 1. $ `source venv/bin/activate`
@@ -14,6 +18,7 @@
 ## To run:
 1. $ `source venv/bin/activate`
 1. $ `python ./write_instance_report.py`
+
 
 ## To update dependencies:
 1. pip install new packages as needed in development
