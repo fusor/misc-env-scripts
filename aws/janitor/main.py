@@ -5,7 +5,7 @@ from datetime import datetime
 from sheet import GoogleSheetEditor
 from ec2 import get_all_instances, reformat_instance_data,\
     get_all_eips, reformat_eips_data, get_all_unused_volumes, delete_volume
-from elbs import get_all_elbs, reformat_elbs_data
+from elbs import get_all_elbs, reformat_elbs_data, delete_elb
 from common import save_to_file, load_from_file
 from s3 import get_all_buckets, reformat_buckets_data
 
@@ -59,6 +59,19 @@ def delete_unused_volumes():
     return deleted_vols
 
 
+def delete_unassigned_elbs(elbs):
+    deleted_elbs = 0
+    for elb in elbs:
+        if (elb['Instances'] == 'Unassigned' and elb['Type'] == 'classic'):
+            response = delete_elb(elb['LoadBalancerName'], elb['Region'])
+            if response.get('ResponseMetadata', {}).get('HTTPStatusCode', 500) == 200:
+                delete_elbs += 1 
+    return deleted_elbs
+
+def delete_unassigned_eips():
+    deleted_eips = 0
+    return deleted_eips
+
 if __name__ == "__main__":
     sheet_id = os.environ['GOOGLE_SHEET_ID']
     allInstancesSheetName = os.environ['SHEET_ALL_INSTANCES']
@@ -104,12 +117,13 @@ if __name__ == "__main__":
 
     elbs = get_all_elbs()
     elbs = reformat_elbs_data(elbs)
+    numberOfElbsDeleted = delete_unassigned_elbs(elbs)
+    summaryRow['ELBs'] = 'Deleted {} elbs'.format(numberOfElbsDeleted)
     elbs_daily_bill = 0.0
     for elb in elbs:
         elbs_daily_bill += float(re.sub(r'\$', '', elb['CostPerDay']))
     summaryRow['ELBs Daily Cost'] = "${}".format(str(elbs_daily_bill))
     print(allElbsSheet.save_data_to_sheet(elbs))
-    summaryRow['ELBs'] = 'Deleted 0 elbs'
 
     numberOfVolumes = delete_unused_volumes()
     summaryRow['Volumes'] = 'Deleted {} volumes'.format(numberOfVolumes)
