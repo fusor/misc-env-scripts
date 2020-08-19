@@ -65,7 +65,7 @@ def delete_unassigned_elbs(elbs):
         if (elb['Instances'] == 'Unassigned' and elb['Type'] == 'classic'):
             response = delete_classic_elb(elb['LoadBalancerName'], elb['Region'])
             if response.get('ResponseMetadata', {}).get('HTTPStatusCode', 500) == 200:
-                delete_elbs += 1 
+                deleted_elbs += 1 
     return deleted_elbs
 
 def delete_unassigned_eips():
