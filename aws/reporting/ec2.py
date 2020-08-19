@@ -56,12 +56,18 @@ def reformat_eips_data(raw_eips):
     keys = [
         'Tags.Name',
         'PublicIp',
+        'AllocationId',
         'NetworkBorderGroup',
         'InstanceId',
         'Tags.guid',
         'Tags.owner'
     ]
-    return reformat_data(raw_eips, keys)
+    eips = reformat_data(raw_eips, keys)
+    for eip in eips:
+        if 'NetworkBorderGroup' in eip:
+            eip['Region'] = eip['NetworkBorderGroup']
+            del eip['NetworkBorderGroup']
+    return eips
 
 def terminate_instances(instance_ids):
     client = boto3.client('ec2')
@@ -86,3 +92,6 @@ def get_all_unused_volumes():
 
 def delete_volume(volume_id, region):
     return boto3.client('ec2', region_name=region).delete_volume(VolumeId=volume_id)
+
+def delete_eip(eip):
+    return boto3.client('ec2', region_name=eip['Region']).release_address(AllocationId=eip['AllocationId'])
