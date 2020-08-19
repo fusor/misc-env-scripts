@@ -50,5 +50,5 @@ def reformat_elbs_data(elbs):
             del elb['Code']
     return elbs
 
-def delete_elb(elb_name, region):
-    return boto3.client('elb', region_name=region).delete(LoadBalancerName=elb_name)
+def delete_classic_elb(elb_name, region):
+    return boto3.client('elb', region_name=region).delete_load_balancer(LoadBalancerName=elb_name)
