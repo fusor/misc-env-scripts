@@ -4,7 +4,8 @@ import pytz
 from datetime import datetime
 from sheet import GoogleSheetEditor
 from ec2 import get_all_instances, reformat_instance_data,\
-    get_all_eips, reformat_eips_data, get_all_unused_volumes, delete_volume
+    get_all_eips, reformat_eips_data, get_all_unused_volumes,\
+    delete_volume, deleted_eip
 from elbs import get_all_elbs, reformat_elbs_data, delete_classic_elb
 from common import save_to_file, load_from_file
 from s3 import get_all_buckets, reformat_buckets_data
@@ -68,8 +69,13 @@ def delete_unassigned_elbs(elbs):
                 deleted_elbs += 1 
     return deleted_elbs
 
-def delete_unassigned_eips():
+def delete_unassigned_eips(eips):
     deleted_eips = 0
+    for eip in eips:
+        if eip['InstanceId'] == '':
+            response = delete_eip(eip)
+            if response.get('ResponseMetadata', {}).get('HTTPStatusCode', 500) == 200:
+                deleted_eips += 1 
     return deleted_eips
 
 if __name__ == "__main__":
@@ -113,6 +119,8 @@ if __name__ == "__main__":
 
     eips = get_all_eips()
     eips = reformat_eips_data(eips)
+    numberOfEipsDeleted = delete_unassigned_eips(eips)
+    summaryRow['EIPs'] = 'Deleted {} eips'.format(numberOfEipsDeleted)
     print(allEipsSheet.save_data_to_sheet(eips))
 
     elbs = get_all_elbs()
@@ -125,8 +133,8 @@ if __name__ == "__main__":
     summaryRow['ELBs Daily Cost'] = "${}".format(str(elbs_daily_bill))
     print(allElbsSheet.save_data_to_sheet(elbs))
 
-    numberOfVolumes = delete_unused_volumes()
-    summaryRow['Volumes'] = 'Deleted {} volumes'.format(numberOfVolumes)
+    numberOfVolumesDeleted = delete_unused_volumes()
+    summaryRow['Volumes'] = 'Deleted {} volumes'.format(numberOfVolumesDeleted)
 
     buckets = get_all_buckets()
     buckets = reformat_buckets_data(buckets)
