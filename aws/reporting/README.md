@@ -5,16 +5,15 @@
 
 
 ## Obtain credentials
-1. Provide a `credentials.json` 
-    * See: https://developers.google.com/sheets/api/guides/authorizing#APIKey
-    * https://developers.google.com/sheets/api/quickstart/python
-1. Run these scripts and if `token.pickle` is missing the scripts will prompt you to visit the link displayed and accept authorization
-1. A token is then saved in `token.pickle`
+These scripts use Google service account credentials to allow bots to run the scripts.
+
+1. Create a new Service Account 
+2. Create a new key in json format
+3. Download the key to `credentials.json` file in the current directory
 
 ## To run:
 1. $ `source venv/bin/activate`
 1. $ `python ./write_instance_report.py`
-
 
 ## To update dependencies:
 1. pip install new packages as needed in development

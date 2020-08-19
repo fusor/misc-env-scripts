@@ -1,5 +1,5 @@
-#.pyc
-credentials.json
-venv
-token.pickle
+venv/
 
+credentials.json
+
+*.pickle
