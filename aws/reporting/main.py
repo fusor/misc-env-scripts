@@ -6,7 +6,7 @@ from datetime import datetime
 from sheet import GoogleSheetEditor
 from ec2 import get_all_instances, reformat_instance_data,\
     get_all_eips, reformat_eips_data, get_all_unused_volumes,\
-    delete_volume, delete_eip
+    delete_volume, delete_eip, terminate_instance
 from elbs import get_all_elbs, reformat_elbs_data, delete_classic_elb
 from common import save_to_file, load_from_file
 from s3 import get_all_buckets, reformat_buckets_data
@@ -48,8 +48,11 @@ def terminate_instances(old_instances_sheet):
     for inst in old_instances:
         now = datetime.utcnow()
         if 'save' not in inst['Saved'].lower():
-            instance_ids.append(inst['InstanceId'])
-    print("instances will be deleted: ", instance_ids)
+            instance_id = inst['InstanceId']
+            instance_region = re.sub(r'(\w+)-(\w+)-(\d)\w+', "\g<1>-\g<2>-\g<3>", inst["AvailabilityZone"])
+            instance_ids.append([instance_id, instance_region])
+    for inst in instance_ids:
+        terminate_instance(inst[0], inst[1])
     return instance_ids       
 
 def delete_unused_volumes():

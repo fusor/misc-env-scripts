@@ -36,9 +36,6 @@ def reformat_instance_data(raw_instances):
     ]
     formatted_instances = reformat_data(raw_instances, keys)
     for inst in formatted_instances:
-        if 'AvailabilityZone' in inst:
-            inst['Region'] = inst['AvailabilityZone']
-            del inst['AvailabilityZone']
         region = re.sub(r'(\w+)-(\w+)-(\d)\w+', "\g<1>-\g<2>-\g<3>", inst["AvailabilityZone"])
         instance_type = inst['InstanceType']
         launch_time = inst['LaunchTime']
@@ -72,10 +69,6 @@ def reformat_eips_data(raw_eips):
             del eip['NetworkBorderGroup']
     return eips
 
-def terminate_instances(instance_ids):
-    client = boto3.client('ec2')
-    return client.terminate_instances(InstanceIds=instance_ids)
-
 def get_all_unused_volumes():
     all_volumes = []
     for region in get_all_regions():
@@ -98,3 +91,6 @@ def delete_volume(volume_id, region):
 
 def delete_eip(eip):
     return boto3.client('ec2', region_name=eip['Region']).release_address(AllocationId=eip['AllocationId'])
+
+def terminate_instance(instance_id, region):
+    return boto3.client('ec2', region_name=region).terminate_instances(InstanceIds=[instance_id])
