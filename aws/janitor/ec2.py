@@ -66,3 +66,23 @@ def reformat_eips_data(raw_eips):
 def terminate_instances(instance_ids):
     client = boto3.client('ec2')
     return client.terminate_instances(InstanceIds=instance_ids)
+
+def get_all_unused_volumes():
+    all_volumes = []
+    for region in get_all_regions():
+        vols = []
+        client = boto3.client('ec2', region_name=region)
+        filters = [
+            {
+                'Name': 'status',
+                'Values': ['available', 'error']
+            }
+        ]
+        for vol in client.describe_volumes(Filters=filters)['Volumes']:
+            vol['Region'] = region
+            vols.append(vol)
+        all_volumes.extend(vols)
+    return all_volumes
+
+def delete_volume(volume_id, region):
+    return boto3.client('ec2', region_name=region).delete_volume(VolumeId=volume_id)

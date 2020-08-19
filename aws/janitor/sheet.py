@@ -61,6 +61,15 @@ class GoogleSheetEditor():
             valueInputOption='USER_ENTERED', body=body).execute())
         return responses
 
+    def append_data_to_sheet(self, rows):
+        body = { 'values': self.to_sheet_data(rows, skip_labels=True) }
+        responses = []
+        responses.append(self._update_timestamp())
+        responses.append(self.client.service.spreadsheets().values().append(
+            spreadsheetId=self.sheet_id, range="{}!A{}".format(self.sheet_name, self.title_rows+2),
+            valueInputOption='USER_ENTERED', body=body, insertDataOption='INSERT_ROWS').execute())
+        return responses
+
     def clear_previous_data(self):
         return self.client.service.spreadsheets().values().clear(
             spreadsheetId=self.sheet_id, range=self.get_sheet_range()).execute()
@@ -94,7 +103,7 @@ class GoogleSheetEditor():
                 converted_data[row_dict[indexField]] = row_dict
         return converted_data
 
-    def to_sheet_data(self, rows):
+    def to_sheet_data(self, rows, skip_labels=False):
         """ converts list of dicts into sheet compatible format
         """
         data = []
@@ -110,4 +119,6 @@ class GoogleSheetEditor():
                     v = v.strftime("%m/%d/%Y")
                 current_row[idx] = v
             data.append(current_row)
+        if skip_labels:
+            return data
         return [column_labels]+data
