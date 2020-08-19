@@ -5,7 +5,7 @@ from datetime import datetime
 from sheet import GoogleSheetEditor
 from ec2 import get_all_instances, reformat_instance_data,\
     get_all_eips, reformat_eips_data, get_all_unused_volumes,\
-    delete_volume, deleted_eip
+    delete_volume, delete_eip
 from elbs import get_all_elbs, reformat_elbs_data, delete_classic_elb
 from common import save_to_file, load_from_file
 from s3 import get_all_buckets, reformat_buckets_data
