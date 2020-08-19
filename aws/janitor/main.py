@@ -80,7 +80,7 @@ if __name__ == "__main__":
     summaryRow = {
         'Date': '',
         'EC2 Daily Cost': '',
-        'EIPs Daily Cost': '',
+        'ELBs Daily Cost': '',
         'ELBs': '',
         'EIPs': '',
         'Volumes': ''
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     instances_daily_bill = 0.0
     for instance in instances:
         instances_daily_bill += float(re.sub(r'\$', '', instance['Cost Per Day']))
-    summaryRow['EC2 Daily Cost'] = str(instances_daily_bill)
+    summaryRow['EC2 Daily Cost'] = "${}".format(str(instances_daily_bill))
     print(allInstancesSheet.save_data_to_sheet(instances))
     instances = prepare_old_instances_data(allInstancesSheet, oldInstancesSheet)
     print(oldInstancesSheet.save_data_to_sheet(instances))
@@ -101,10 +101,13 @@ if __name__ == "__main__":
     eips = get_all_eips()
     eips = reformat_eips_data(eips)
     print(allEipsSheet.save_data_to_sheet(eips))
-    summaryRow['EIPs Daily Cost'] = '0'
 
     elbs = get_all_elbs()
     elbs = reformat_elbs_data(elbs)
+    elbs_daily_bill = 0.0
+    for elb in elbs:
+        elbs_daily_bill += float(re.sub(r'\$', '', elb['CostPerDay']))
+    summaryRow['ELBs Daily Cost'] = "${}".format(str(elbs_daily_bill))
     print(allElbsSheet.save_data_to_sheet(elbs))
     summaryRow['ELBs'] = 'Deleted 0 elbs'
 
