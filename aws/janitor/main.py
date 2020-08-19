@@ -49,13 +49,19 @@ def terminate_instances(old_instances_sheet):
 
 if __name__ == "__main__":
     sheet_id = os.environ['GOOGLE_SHEET_ID']
+    allInstancesSheetName = os.environ['SHEET_ALL_INSTANCES']
+    oldInstancesSheetName = os.environ['SHEET_OLD_INSTANCES']
+    allEipsSheetName = os.environ['SHEET_ALL_EIPS']
+    allElbsSheetName = os.environ['SHEET_ALL_ELBS']
+    allS3SheetName = os.environ['SHEET_ALL_BUCKETS']
+    oldS3SheetName = os.environ['SHEET_OLD_BUCKETS']
 
-    allInstancesSheet = GoogleSheetEditor(sheet_id, '___ (Do not use)')
-    oldInstancesSheet = GoogleSheetEditor(sheet_id, '__ (Do not use)')
-    allEipsSheet = GoogleSheetEditor(sheet_id, 'EIPs')
-    allElbsSheet = GoogleSheetEditor(sheet_id, 'ELBs')
-    allS3Sheet = GoogleSheetEditor(sheet_id, 'S3-All-Buckets')
-    oldS3Sheet = GoogleSheetEditor(sheet_id, 'S3-Old-Buckets')
+    allInstancesSheet = GoogleSheetEditor(sheet_id, allInstancesSheetName)
+    oldInstancesSheet = GoogleSheetEditor(sheet_id, oldInstancesSheetName)
+    allEipsSheet = GoogleSheetEditor(sheet_id, allEipsSheetName)
+    allElbsSheet = GoogleSheetEditor(sheet_id, allElbsSheetName)
+    allS3Sheet = GoogleSheetEditor(sheet_id, allS3SheetName)
+    oldS3Sheet = GoogleSheetEditor(sheet_id, oldS3SheetName)
 
     instances = get_all_instances()
     instances = reformat_instance_data(instances)

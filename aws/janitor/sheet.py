@@ -4,9 +4,8 @@ import pytz
 import pickle
 import os.path
 import datetime
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
 
 class GoogleSheetClient(object):
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -16,22 +15,11 @@ class GoogleSheetClient(object):
         self._init_spreadsheet_service()
 
     def _init_spreadsheet_service(self):
-        if not os.path.exists('token.pickle') and not os.path.exists('credentials.json'):
+        if not os.path.exists('credentials.json'):
             raise Exception("credentials.json not found")
 
-        if os.path.exists('token.pickle'):
-            with open('token.pickle', 'rb') as token:
-                self.creds = pickle.load(token)
-        
-        if not self.creds or not self.creds.valid:
-            if self.creds and self.creds.expired and self.creds.refresh_token:
-                self.creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json', GoogleSheetClient.SCOPES)
-                self.creds = flow.run_local_server(port=0)
-            with open('token.pickle', 'wb') as token:
-                pickle.dump(self.creds, token)
+        self.creds = service_account.Credentials.from_service_account_file('credentials.json', 
+            scopes=GoogleSheetClient.SCOPES)
         
         self.service = build('sheets', 'v4', credentials=self.creds)
 
@@ -115,7 +103,6 @@ class GoogleSheetEditor():
             for k, v in row.items():
                 if k not in column_labels:
                     column_labels.append(k)
-
             current_row = ['']*(max(len(column_labels), len(row.keys())))
             for k, v in row.items():
                 idx = column_labels.index(k)
