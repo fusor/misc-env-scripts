@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import pytz
 from datetime import datetime
 from sheet import GoogleSheetEditor
@@ -48,6 +49,7 @@ def terminate_instances(old_instances_sheet):
         now = datetime.utcnow()
         if 'save' not in inst['Saved'].lower():
             instance_ids.append(inst['InstanceId'])
+    print("instances will be deleted: ", instance_ids)
     return instance_ids       
 
 def delete_unused_volumes():
@@ -79,6 +81,8 @@ def delete_unassigned_eips(eips):
     return deleted_eips
 
 if __name__ == "__main__":
+    args = sys.argv
+
     sheet_id = os.environ['GOOGLE_SHEET_ID']
     allInstancesSheetName = os.environ['SHEET_ALL_INSTANCES']
     oldInstancesSheetName = os.environ['SHEET_OLD_INSTANCES']
@@ -101,46 +105,57 @@ if __name__ == "__main__":
         'EC2 Daily Cost': '',
         'ELBs Daily Cost': '',
         'ELBs': '',
-        'EIPs': '',
         'Volumes': ''
     }
     now = datetime.now(pytz.timezone('US/Eastern')).strftime("%H:%M:%S %B %d, %Y")
     summaryRow['Date'] = now
 
-    instances = get_all_instances()
-    instances = reformat_instance_data(instances)
-    instances_daily_bill = 0.0
-    for instance in instances:
-        instances_daily_bill += float(re.sub(r'\$', '', instance['Cost Per Day']))
-    summaryRow['EC2 Daily Cost'] = "${}".format(str(instances_daily_bill))
-    print(allInstancesSheet.save_data_to_sheet(instances))
-    instances = prepare_old_instances_data(allInstancesSheet, oldInstancesSheet)
-    print(oldInstancesSheet.save_data_to_sheet(instances))
+    if args[1] == 'report':
+        # update all instances sheet
+        instances = get_all_instances()
+        instances = reformat_instance_data(instances)
+        instances_daily_bill = 0.0
+        for instance in instances:
+            instances_daily_bill += float(re.sub(r'\$', '', instance['Cost Per Day']))
+        summaryRow['EC2 Daily Cost'] = "${}".format(str(instances_daily_bill))
+        print(allInstancesSheet.save_data_to_sheet(instances))
+        # update old instance sheet
+        instances = prepare_old_instances_data(allInstancesSheet, oldInstancesSheet)
+        print(oldInstancesSheet.save_data_to_sheet(instances))
 
-    eips = get_all_eips()
-    eips = reformat_eips_data(eips)
-    # numberOfEipsDeleted = delete_unassigned_eips(eips)
-    # summaryRow['EIPs'] = 'Deleted {} eips'.format(numberOfEipsDeleted)
-    print(allEipsSheet.save_data_to_sheet(eips))
+        # update eips sheet
+        eips = get_all_eips()
+        eips = reformat_eips_data(eips)
+        print(allEipsSheet.save_data_to_sheet(eips))
 
-    elbs = get_all_elbs()
-    elbs = reformat_elbs_data(elbs)
-    numberOfElbsDeleted = delete_unassigned_elbs(elbs)
-    summaryRow['ELBs'] = 'Deleted {} elbs'.format(numberOfElbsDeleted)
-    elbs_daily_bill = 0.0
-    for elb in elbs:
-        elbs_daily_bill += float(re.sub(r'\$', '', elb['CostPerDay']))
-    summaryRow['ELBs Daily Cost'] = "${}".format(str(elbs_daily_bill))
-    print(allElbsSheet.save_data_to_sheet(elbs))
+        # update elbs sheet
+        elbs = get_all_elbs()
+        elbs = reformat_elbs_data(elbs)
+        numberOfElbsDeleted = delete_unassigned_elbs(elbs)
+        summaryRow['ELBs'] = 'Deleted {} elbs'.format(numberOfElbsDeleted)
+        elbs_daily_bill = 0.0
+        for elb in elbs:
+            elbs_daily_bill += float(re.sub(r'\$', '', elb['CostPerDay']))
+        summaryRow['ELBs Daily Cost'] = "${}".format(str(elbs_daily_bill))
+        print(allElbsSheet.save_data_to_sheet(elbs))
 
-    numberOfVolumesDeleted = delete_unused_volumes()
-    summaryRow['Volumes'] = 'Deleted {} volumes'.format(numberOfVolumesDeleted)
+        # delete old volumes
+        numberOfVolumesDeleted = delete_unused_volumes()
+        summaryRow['Volumes'] = 'Deleted {} volumes'.format(numberOfVolumesDeleted)
 
-    buckets = get_all_buckets()
-    buckets = reformat_buckets_data(buckets)
-    print(allS3Sheet.save_data_to_sheet(buckets))
-    buckets = prepare_old_s3_buckets_data(allS3Sheet, oldS3Sheet)
-    print(oldS3Sheet.save_data_to_sheet(buckets))
+        # update all buckets sheet
+        buckets = get_all_buckets()
+        buckets = reformat_buckets_data(buckets)
+        print(allS3Sheet.save_data_to_sheet(buckets))
+        # update old buckets sheet
+        buckets = prepare_old_s3_buckets_data(allS3Sheet, oldS3Sheet)
+        print(oldS3Sheet.save_data_to_sheet(buckets))
+    
+    elif args[1] == 'purge_instances':
+        terminate_instances(oldInstancesSheet)
+    
+    else:
+        pass
 
     summarySheet.append_data_to_sheet([summaryRow])
 

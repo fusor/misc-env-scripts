@@ -36,6 +36,9 @@ def reformat_instance_data(raw_instances):
     ]
     formatted_instances = reformat_data(raw_instances, keys)
     for inst in formatted_instances:
+        if 'AvailabilityZone' in inst:
+            inst['Region'] = inst['AvailabilityZone']
+            del inst['AvailabilityZone']
         region = re.sub(r'(\w+)-(\w+)-(\d)\w+', "\g<1>-\g<2>-\g<3>", inst["AvailabilityZone"])
         instance_type = inst['InstanceType']
         launch_time = inst['LaunchTime']
