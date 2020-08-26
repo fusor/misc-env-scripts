@@ -1,10 +1,10 @@
 import re
 import boto3
+import logging
 from pricing import calculate_bill_for_instance
 from common import reformat_data, get_all_regions
 
-EC2_PRICING_API_URL = "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json"
-EC2_PRICING_INFO_FILE = "./ec2_pricing.json"
+logger = logging.getLogger(__name__)
 
 def get_all_instances():
     all_instances = []
@@ -21,6 +21,7 @@ def get_instances_per_region(region):
         for instance in reservation["Instances"]:
             if instance['State']['Name'] == 'running':
                 instances.append(instance)
+                logger.info("{} Found instance {}".format(region, instance['InstanceId']))
     return instances
 
 def reformat_instance_data(raw_instances):
@@ -69,10 +70,6 @@ def reformat_eips_data(raw_eips):
             del eip['NetworkBorderGroup']
     return eips
 
-def terminate_instances(instance_ids):
-    client = boto3.client('ec2')
-    return client.terminate_instances(InstanceIds=instance_ids)
-
 def get_all_unused_volumes():
     all_volumes = []
     for region in get_all_regions():
@@ -87,11 +84,37 @@ def get_all_unused_volumes():
         for vol in client.describe_volumes(Filters=filters)['Volumes']:
             vol['Region'] = region
             vols.append(vol)
+            logger.info("{} Found unused vol {}".format(region, vol))
         all_volumes.extend(vols)
     return all_volumes
 
 def delete_volume(volume_id, region):
-    return boto3.client('ec2', region_name=region).delete_volume(VolumeId=volume_id)
+    response = {}
+    try:
+        logger.info("{} Attempting to delete vol {}".format(region, volume_id))
+        response = boto3.client('ec2', region_name=region).delete_volume(VolumeId=volume_id)
+    except Exception as e:
+        logger.info("{} Error deleting vol {}".format(region, volume_id))
+        logger.error(str(e))
+    return response
 
 def delete_eip(eip):
-    return boto3.client('ec2', region_name=eip['Region']).release_address(AllocationId=eip['AllocationId'])
+    response = {}
+    try:
+        logger.info("{} Attempting to delete eip {}".format(eip['Region'], eip['AllocationId']))
+        response = boto3.client('ec2', region_name=eip['Region']).release_address(AllocationId=eip['AllocationId'])
+    except Exception as e:
+        logger.info("{} Error deleting eip {}".format(eip['Region'], eip['AllocationId']))
+        logger.error(str(e))
+    return response
+
+def terminate_instance(instance_id, region):
+    response = {}
+    try:
+        logger.info("{} Attempting to terminate instance {}".format(region, instance_id))
+        response = boto3.client('ec2', region_name=region).terminate_instances(InstanceIds=[instance_id])
+    except Exception as e:
+        logger.info("{} Error terminating instance {}".format(region, instance_id))
+        logger.error(str(e))
+    return response
+

@@ -1,7 +1,10 @@
 import re
 import boto3
+import logging
 from pricing import calculate_bill_for_elb
 from common import reformat_data, get_all_regions
+
+logger = logging.getLogger(__name__)
 
 def get_all_elbs():
     elbs = []
@@ -51,4 +54,11 @@ def reformat_elbs_data(elbs):
     return elbs
 
 def delete_classic_elb(elb_name, region):
-    return boto3.client('elb', region_name=region).delete_load_balancer(LoadBalancerName=elb_name)
+    response = {}
+    try:
+        logger.info("{} Attempting to delete elb {}".format(region, elb_name))
+        response = boto3.client('elb', region_name=region).delete_load_balancer(LoadBalancerName=elb_name)
+    except Exception as e:
+        logger.info("{} Error deleting elb {}".format(region, elb_name))
+        logger.error(str(e))
+    return response

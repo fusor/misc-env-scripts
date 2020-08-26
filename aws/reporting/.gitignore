@@ -3,3 +3,5 @@ venv/
 credentials.json
 
 *.pickle
+
+*.log
