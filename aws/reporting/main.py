@@ -3,7 +3,8 @@ import re
 import sys
 import pytz
 import logging
-from datetime import datetime
+from emailer import Emailer
+from datetime import datetime, timedelta
 from sheet import GoogleSheetEditor
 from ec2 import get_all_instances, reformat_instance_data,\
     get_all_eips, reformat_eips_data, get_all_unused_volumes,\
@@ -19,13 +20,13 @@ OLD_INSTANCE_THRESHOLD = 30
 # number of days to qualify a bucket as old
 OLD_BUCKETS_THRESHOLD = 60
 
-def prepare_old_instances_data(all_instances_sheet, old_instances_sheet):
+def prepare_old_instances_data(all_instances_sheet, old_instances_sheet, tdelta=timedelta(days=0)):
     instances = all_instances_sheet.read_spreadsheet()
     existing_old_instances = old_instances_sheet.read_spreadsheet(indexField='InstanceId')
     old_instances = []
     for instance in instances:
         launch_time = datetime.strptime(instance['LaunchTime'], "%m/%d/%Y")
-        now = datetime.utcnow()
+        now = datetime.utcnow() + tdelta
         if (now - launch_time).days > OLD_INSTANCE_THRESHOLD:
             instance['Saved'] = existing_old_instances.get(instance['InstanceId'], {}).get('Saved', '')
             instance['Notes'] = existing_old_instances.get(instance['InstanceId'], {}).get('Notes', '')
@@ -44,12 +45,11 @@ def prepare_old_s3_buckets_data(all_s3_buckets_sheet, old_s3_buckets_sheet):
             old_buckets.append(bucket)
     return old_buckets
 
-def terminate_instances(old_instances_sheet):
-    old_instances = old_instances_sheet.read_spreadsheet()
+def terminate_instances(old_instances_sheet, all_instances_sheet):
+    old_instances = prepare_old_instances_data(all_instances_sheet, old_instances_sheet, timedelta(days=-4))
     instance_ids = []
     deleted_instances = 0
     for inst in old_instances:
-        now = datetime.utcnow()
         if 'save' not in inst['Saved'].lower():
             instance_id = inst['InstanceId']
             instance_region = re.sub(r'(\w+)-(\w+)-(\d)\w+', "\g<1>-\g<2>-\g<3>", inst["AvailabilityZone"])
@@ -92,12 +92,67 @@ def delete_vpcs():
     deleted_vpcs = delete_orphan_vpcs(vpcs)
     return deleted_vpcs
 
+def get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet):
+    sheet_link = os.environ['SHEET_LINK']
+    old_instances = prepare_old_instances_data(allInstancesSheet, oldInstancesSheet)
+    message = """
+All,<br>
+<br>            
+This is a reminder to let you know that the AWS cleanup automation script will terminate some of the long running EC2 instances.<br>
+<br>
+You can save your instances from automatic deletion by writing 'Save' in the 'Saved' column in 'EC2-Old-Instances' spreadsheet below:
+<br>
+<br>
+<a href="{}">{}</a>
+<br>
+<br>
+Next cleanup is scheduled on <b>{}</b>.
+<br><br>
+Here's the summary of instances scheduled for termination:
+<br><br>
+{}
+<br><br>
+Thank you.<br>
+        """
+    scheduled = (datetime.utcnow() + timedelta(days=4)).strftime("%a, %b %d, %y")
+    unique_owners = {}
+    orphan_instances = []
+    instance_list = ""
+    for inst in old_instances:
+        if 'save' in inst['Saved'].lower():
+            continue
+        name = inst.get('Name', '')
+        
+        inst_id = inst.get('InstanceId', '')
+        owner = inst.get('owner', 'OwnerNotFound')
+        if owner != 'OwnerNotFound':
+            guid = inst.get('guid', '')
+            if owner in unique_owners:
+                unique_owners[owner]['count'] += 1
+                if guid not in unique_owners[owner]['guids']:
+                    unique_owners[owner]['guids'].append(guid)
+            else:
+                unique_owners[owner] = {'count': 1, 'guids': [guid]}
+        else:
+            orphan_instances.append(inst)
+    if (len(unique_owners.keys()) == 0 and len(orphan_instances) == 0):
+        return None
+    summary_email = ""
+    for k, v in unique_owners.items():
+        summary_email += "- {} unsaved instances owned by {} associated with GUIDs <b>{}</b><br>"\
+                                    .format(v.get('count'), k, v.get('guids'))
+    if len(orphan_instances) > 0:
+        summary_email += "\n Following instances could not be associated with owners:\n"
+        for inst in orphan_instances:
+            summary_email += "- Instance Id : {}, Region : {}".format(inst['InstanceId'], inst['AvailabilityZone'])
+    return message.format(sheet_link, sheet_link, scheduled, summary_email)
+
 if __name__ == "__main__":
     args = sys.argv
     logging.basicConfig(
         filename='./cleaner.log',
         format='[%(levelname)s] [%(name)s] [%(asctime)s] %(message)s',
-        
+
         level=logging.INFO
     )
     logging.getLogger('boto3').setLevel(logging.ERROR)
@@ -131,6 +186,8 @@ if __name__ == "__main__":
     }
     now = datetime.now(pytz.timezone('US/Eastern')).strftime("%H:%M:%S %B %d, %Y")
     summaryRow['Date'] = now
+
+    skip_summary = False
 
     if args[1] == 'report':
         # update all instances sheet
@@ -174,8 +231,20 @@ if __name__ == "__main__":
         print(oldS3Sheet.save_data_to_sheet(buckets))
     
     elif args[1] == 'purge_instances':
-        numberOfInstancesDeleted = terminate_instances(oldInstancesSheet)
+        numberOfInstancesDeleted = terminate_instances(oldInstancesSheet, allInstancesSheet)
         summaryRow['EC2 Cleanup'] = 'Deleted {} instances'.format(numberOfInstancesDeleted)
+    
+    elif args[1] == 'generate_ec2_deletion_summary':
+        summaryEmail = get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet)
+        if summaryEmail is not None:
+            smtp_addr = os.environ['SMTP_ADDR']
+            smtp_username = os.environ['SMTP_USERNAME']
+            smtp_password = os.environ['SMTP_PASSWORD']
+            smtp_sender = os.environ['SMTP_SENDER']
+            smtp_receivers = os.environ['SMTP_RECEIVERS'].split(',')
+            emailer = Emailer(smtp_addr, smtp_username, smtp_password)
+            emailer.send_email(smtp_sender, smtp_receivers, 'AWS Cleanup Notification', summaryEmail)
+        skip_summary = True
     
     elif args[1] == 'purge_vpcs':
         numberOfVpcsDeleted = delete_vpcs()
@@ -184,4 +253,5 @@ if __name__ == "__main__":
     else:
         pass
 
-    summarySheet.append_data_to_sheet([summaryRow])
+    if not skip_summary:
+        summarySheet.append_data_to_sheet([summaryRow])
