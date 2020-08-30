@@ -56,7 +56,7 @@ def terminate_instances(old_instances_sheet, all_instances_sheet):
             instance_ids.append([instance_id, instance_region])
     for inst in instance_ids:
         response = terminate_instance(inst[0], inst[1])
-        if reponse.get('ResponseMetadata', {}).get('HTTPStatusCode', 500) == 200:
+        if response.get('ResponseMetadata', {}).get('HTTPStatusCode', 500) == 200:
             deleted_instances += 1
     return deleted_instances       
 
@@ -65,7 +65,7 @@ def delete_unused_volumes():
     vols = get_all_unused_volumes()
     for vol in vols:
         response = delete_volume(vol['VolumeId'], vol['Region'])
-        if reponse.get('ResponseMetadata', {}).get('HTTPStatusCode', 500) == 200:
+        if response.get('ResponseMetadata', {}).get('HTTPStatusCode', 500) == 200:
             deleted_vols += 1
     return deleted_vols
 
