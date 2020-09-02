@@ -199,15 +199,15 @@ if __name__ == "__main__":
         for instance in instances:
             instances_daily_bill += float(re.sub(r'\$', '', instance['Cost Per Day']))
         summaryRow['EC2 Daily Cost'] = "${}".format(str(instances_daily_bill))
-        #print(allInstancesSheet.save_data_to_sheet(instances))
+        print(allInstancesSheet.save_data_to_sheet(instances))
         # update old instance sheet
         instances = prepare_old_instances_data(allInstancesSheet, oldInstancesSheet)
-        #print(oldInstancesSheet.save_data_to_sheet(instances))
+        print(oldInstancesSheet.save_data_to_sheet(instances))
 
         # update eips sheet
         eips = get_all_eips()
         eips = reformat_eips_data(eips)
-        #print(allEipsSheet.save_data_to_sheet(eips))
+        print(allEipsSheet.save_data_to_sheet(eips))
 
         # update elbs sheet
         elbs = get_all_elbs()
@@ -218,7 +218,7 @@ if __name__ == "__main__":
         for elb in elbs:
             elbs_daily_bill += float(re.sub(r'\$', '', elb['CostPerDay']))
         summaryRow['ELBs Daily Cost'] = "${}".format(str(elbs_daily_bill))
-        #print(allElbsSheet.save_data_to_sheet(elbs))
+        print(allElbsSheet.save_data_to_sheet(elbs))
 
         # delete old volumes
         numberOfVolumesDeleted = delete_unused_volumes()
@@ -227,10 +227,10 @@ if __name__ == "__main__":
         # update all buckets sheet
         buckets = get_all_buckets()
         buckets = reformat_buckets_data(buckets)
-        #print(allS3Sheet.save_data_to_sheet(buckets))
+        print(allS3Sheet.save_data_to_sheet(buckets))
         # update old buckets sheet
         buckets = prepare_old_s3_buckets_data(allS3Sheet, oldS3Sheet)
-        #print(oldS3Sheet.save_data_to_sheet(buckets))
+        print(oldS3Sheet.save_data_to_sheet(buckets))
     
     elif args[1] == 'purge_instances':
         numberOfInstancesDeleted = terminate_instances(oldInstancesSheet, allInstancesSheet)
