@@ -70,6 +70,7 @@ def delete_orphan_vpcs(vpcs):
                 try:
                     logger.info("{} Attempting to delete eni {}".format(region, eni.id))
                     eni.detach()
+                    sleep(5)
                     eni.delete()
                 except Exception as e:
                     logger.info("{} Error deleting eni {}".format(region, eni.id))
@@ -79,6 +80,7 @@ def delete_orphan_vpcs(vpcs):
                 try:
                     logger.info("{} Attempting to delete ig {}".format(region, ig.id))
                     vpc_res.detach_internet_gateway(InternetGatewayId=ig.id)
+                    sleep(5)
                     ig.delete()
                 except Exception as e:
                     logger.info("{} Error deleting ig {}".format(region, ig.id))
@@ -117,9 +119,10 @@ def delete_orphan_vpcs(vpcs):
                     if sg.group_name != 'default':
                         logger.info("{} Attempting to revoke ingress from group {}".format(region, sg.id))
                         sg.revoke_ingress(IpPermissions=sg.ip_permissions)
+                        sleep(3)
                         logger.info("{} Attempting to revoke egress from group {}".format(region, sg.id))
                         sg.revoke_egress(IpPermissions=sg.ip_permissions_egress)
-                except:
+                except Exception as e:
                     logger.info("{} Error revoking ingress / egress from group {}".format(region, sg.id))
                     logger.error(str(e))
             # delete security groups

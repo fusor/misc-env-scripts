@@ -88,7 +88,7 @@ def delete_unassigned_eips(eips):
     return deleted_eips
 
 def delete_vpcs():
-    vpcs = load_from_file('./vpc.raw.pickle')
+    vpcs = get_all_vpcs()
     deleted_vpcs = delete_orphan_vpcs(vpcs)
     return deleted_vpcs
 
@@ -251,6 +251,8 @@ if __name__ == "__main__":
     elif args[1] == 'purge_vpcs':
         numberOfVpcsDeleted = delete_vpcs()
         summaryRow['VPC Cleanup'] = 'Deleted {} instances'.format(numberOfVpcsDeleted)
+        numberOfEipsDeleted = delete_unassigned_eips(get_all_eips())
+        summaryRow['EC2 Cleanup'] = 'Deleted {} eips'.format(numberOfEipsDeleted)
 
     else:
         pass
