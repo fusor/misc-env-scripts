@@ -81,7 +81,7 @@ def delete_unassigned_elbs(elbs):
 def delete_unassigned_eips(eips):
     deleted_eips = 0
     for eip in eips:
-        if eip['InstanceId'] == '':
+        if 'InstanceId' not in eip or eip['InstanceId'] == '':
             response = delete_eip(eip)
             if response.get('ResponseMetadata', {}).get('HTTPStatusCode', 500) == 200:
                 deleted_eips += 1 
