@@ -100,11 +100,16 @@ def delete_volume(volume_id, region):
 
 def delete_eip(eip):
     response = {}
+    region = eip.get('NetworkBorderGroup', '')
     try:
-        logger.info("{} Attempting to delete eip {}".format(eip['Region'], eip['AllocationId']))
-        response = boto3.client('ec2', region_name=eip['Region']).release_address(AllocationId=eip['AllocationId'])
+        logger.info("{} Attempting to delete eip {}".format(region, eip['AllocationId']))
+        if region != '':
+            ec2Client = boto3.client('ec2', region_name=region)
+        else:
+            ec2Client = boto3.client('ec2')
+        response = ec2Client.release_address(AllocationId=eip['AllocationId'])
     except Exception as e:
-        logger.info("{} Error deleting eip {}".format(eip['Region'], eip['AllocationId']))
+        logger.info("{} Error deleting eip {}".format(region, eip['AllocationId']))
         logger.error(str(e))
     return response
 
