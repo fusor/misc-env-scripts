@@ -40,8 +40,14 @@ def reformat_instance_data(raw_instances):
         region = re.sub(r'(\w+)-(\w+)-(\d)\w+', "\g<1>-\g<2>-\g<3>", inst["AvailabilityZone"])
         instance_type = inst['InstanceType']
         launch_time = inst['LaunchTime']
-        inst['TotalBill'] = "${}".format(calculate_bill_for_instance(instance_type, region, launch_time)[2])
-        inst['Cost Per Day'] = "${}".format(calculate_bill_for_instance(instance_type, region, launch_time)[1])
+        try:
+            inst['TotalBill'] = "${}".format(calculate_bill_for_instance(instance_type, region, launch_time)[2])
+        except:
+            inst['TotalBill'] = "$0"
+        try:
+            inst['Cost Per Day'] = "${}".format(calculate_bill_for_instance(instance_type, region, launch_time)[1])
+        except:
+            inst['Cost Per Day'] = "$0"
     return formatted_instances
 
 def get_all_eips():
