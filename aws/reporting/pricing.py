@@ -26,8 +26,8 @@ def _ec2_usage_filter_map(instance_type):
         'us-west-1': 'USW1-BoxUsage:{}'.format(instance_type),
         'us-west-2': 'USW2-BoxUsage:{}'.format(instance_type),
         'eu-central-1': 'EUC1-BoxUsage:{}'.format(instance_type),
-        'eu-west-1': 'EU-BoxUsage:{}'.format(instance_type),
-        'eu-west-2': 'EU-BoxUsage:{}'.format(instance_type)
+        'eu-west-1': 'EUW1-BoxUsage:{}'.format(instance_type),
+        'eu-west-2': 'EUW2-BoxUsage:{}'.format(instance_type)
     }
 
 def _region_filter_map():
