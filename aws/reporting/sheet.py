@@ -43,6 +43,14 @@ class GoogleSheetEditor():
     def get_sheet_range(self):
         return "{}!{}{}:Z".format(
             self.sheet_name, 'A', self.title_rows+1)
+    
+    def get_custom_range(self, start, end):
+        return "{}!{}:{}".format(
+            self.sheet_name, start, end)
+
+    def read_custom(self, start, end, indexField=None):
+        return self.client.service.spreadsheets().values().get(
+            spreadsheetId=self.sheet_id, range=self.get_custom_range(start, end)).execute()['values']
 
     def read_spreadsheet(self, indexField=None):
         return self.from_sheet_data(self.client.service.spreadsheets().values().get(

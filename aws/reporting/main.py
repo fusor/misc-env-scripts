@@ -92,9 +92,14 @@ def delete_vpcs():
     deleted_vpcs = delete_orphan_vpcs(vpcs)
     return deleted_vpcs
 
-def get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet):
+def get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet, summarySheet):
     sheet_link = os.environ['SHEET_LINK']
     old_instances = prepare_old_instances_data(allInstancesSheet, oldInstancesSheet)
+    if summarySheet is not None:
+        try:
+            total_ec2_deleted = summarySheet.read_custom('J1', 'J1')[0][0]
+        except:
+            total_ec2_deleted = None
     message = """
 All,<br>
 <br>            
@@ -125,7 +130,7 @@ Thank you.<br>
         
         inst_id = inst.get('InstanceId', '')
         owner = inst.get('owner', 'OwnerNotFound')
-        if owner != 'OwnerNotFound':
+        if owner != 'OwnerNotFound' and owner != "":
             guid = inst.get('guid', '')
             if owner in unique_owners:
                 unique_owners[owner]['count'] += 1
@@ -145,6 +150,8 @@ Thank you.<br>
         summary_email += "\n Following instances could not be associated with owners:\n"
         for inst in orphan_instances:
             summary_email += "- Instance Id : {}, Region : {}".format(inst['InstanceId'], inst['AvailabilityZone'])
+    if total_ec2_deleted is not None:
+        summary_email += "\n Total EC2 instances deleted so far: <b>{}</b>".format(str(total_ec2_deleted))
     return message.format(sheet_link, sheet_link, scheduled, summary_email)
 
 if __name__ == "__main__":
@@ -237,7 +244,7 @@ if __name__ == "__main__":
         summaryRow['EC2 Cleanup'] = 'Deleted {} instances'.format(numberOfInstancesDeleted)
     
     elif args[1] == 'generate_ec2_deletion_summary':
-        summaryEmail = get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet)
+        summaryEmail = get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet, summarySheet)
         if summaryEmail is not None:
             smtp_addr = os.environ['SMTP_ADDR']
             smtp_username = os.environ['SMTP_USERNAME']
