@@ -13,6 +13,7 @@ from elbs import get_all_elbs, reformat_elbs_data, delete_classic_elb
 from common import save_to_file, load_from_file
 from s3 import get_all_buckets, reformat_buckets_data
 from vpc import get_all_vpcs, delete_orphan_vpcs
+from cloudformation import delete_stacks
 
 # number of days to qualify an instance as old
 OLD_INSTANCE_THRESHOLD = 30
@@ -92,9 +93,14 @@ def delete_vpcs():
     deleted_vpcs = delete_orphan_vpcs(vpcs)
     return deleted_vpcs
 
-def get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet):
+def get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet, summarySheet):
     sheet_link = os.environ['SHEET_LINK']
     old_instances = prepare_old_instances_data(allInstancesSheet, oldInstancesSheet)
+    if summarySheet is not None:
+        try:
+            total_ec2_deleted = summarySheet.read_custom('J1', 'J1')[0][0]
+        except:
+            total_ec2_deleted = None
     message = """
 All,<br>
 <br>            
@@ -125,7 +131,7 @@ Thank you.<br>
         
         inst_id = inst.get('InstanceId', '')
         owner = inst.get('owner', 'OwnerNotFound')
-        if owner != 'OwnerNotFound':
+        if owner != 'OwnerNotFound' and owner != "":
             guid = inst.get('guid', '')
             if owner in unique_owners:
                 unique_owners[owner]['count'] += 1
@@ -142,9 +148,11 @@ Thank you.<br>
         summary_email += "- {} unsaved instances owned by {} associated with GUIDs <b>{}</b><br>"\
                                     .format(v.get('count'), k, v.get('guids'))
     if len(orphan_instances) > 0:
-        summary_email += "\n Following instances could not be associated with owners:\n"
+        summary_email += "<br><br> Following instances could not be associated with owners:<br>"
         for inst in orphan_instances:
             summary_email += "- Instance Id : {}, Region : {}".format(inst['InstanceId'], inst['AvailabilityZone'])
+    if total_ec2_deleted is not None:
+        summary_email += "<br><br> Total EC2 instances deleted so far: <b>{}</b><br>".format(str(total_ec2_deleted))
     return message.format(sheet_link, sheet_link, scheduled, summary_email)
 
 if __name__ == "__main__":
@@ -235,9 +243,10 @@ if __name__ == "__main__":
     elif args[1] == 'purge_instances':
         numberOfInstancesDeleted = terminate_instances(oldInstancesSheet, allInstancesSheet)
         summaryRow['EC2 Cleanup'] = 'Deleted {} instances'.format(numberOfInstancesDeleted)
-    
+        delete_stacks()
+
     elif args[1] == 'generate_ec2_deletion_summary':
-        summaryEmail = get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet)
+        summaryEmail = get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet, summarySheet)
         if summaryEmail is not None:
             smtp_addr = os.environ['SMTP_ADDR']
             smtp_username = os.environ['SMTP_USERNAME']
