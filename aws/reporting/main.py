@@ -150,7 +150,7 @@ Thank you.<br>
     if len(orphan_instances) > 0:
         summary_email += "<br><br> Following instances could not be associated with owners:<br>"
         for inst in orphan_instances:
-            summary_email += "- Instance Id : {}, Region : {}".format(inst['InstanceId'], inst['AvailabilityZone'])
+            summary_email += "- Name: {}, Instance Id : {}, Region : {}<br>".format(inst.get('Name', ''), inst['InstanceId'], inst['AvailabilityZone'])
     if total_ec2_deleted is not None:
         summary_email += "<br><br> Total EC2 instances deleted so far: <b>{}</b><br>".format(str(total_ec2_deleted))
     return message.format(sheet_link, sheet_link, scheduled, summary_email)
