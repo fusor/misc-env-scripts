@@ -16,11 +16,7 @@ These scripts use Google service account credentials to allow bots to run the sc
 1. Create a new [Google Service Account](https://support.google.com/a/answer/7378726?hl=en)
 2. Create a new key in json format
 3. Download the key to `credentials.json` file in the current directory
-4. Share the Google Sheet with the Google service account email.
-
-<img width="1440" alt="Screen Shot 2022-05-24 at 11 25 36 AM" src="https://user-images.githubusercontent.com/20452032/170074284-72b28910-ba46-4172-9d7b-49c67958dbca.png">
-
-<img width="1440" alt="Screen Shot 2022-05-24 at 11 35 57 AM" src="https://user-images.githubusercontent.com/20452032/170076352-bb05e521-19d5-4a25-a97f-61be4a4c7996.png">
+4. Share the Google Sheet with the Google service account email <abc-do-not-delete@xyz.iam.gserviceaccount.com>.
 
 
 ## Set Environment Variables
@@ -36,10 +32,6 @@ export SHEET_ALL_ELBS="ELBs"<br>
 export SHEET_ALL_BUCKETS="S3-All-Buckets"<br>
 export SHEET_OLD_BUCKETS="S3-Old-Buckets"<br>
 export SHEET_SUMMARY="Summary"<br>
-
-<img width="1440" alt="Screen Shot 2022-05-24 at 10 43 00 AM" src="https://user-images.githubusercontent.com/20452032/170066197-f82d2022-34ab-4dd8-868d-8c23d7146f23.png">
-<img width="1440" alt="Screen Shot 2022-05-24 at 10 44 34 AM" src="https://user-images.githubusercontent.com/20452032/170066229-7fb47077-2573-440c-a1b8-d1b8ebf12ef2.png">
-
 
 ## To run:
 - Activate the python environment and run
