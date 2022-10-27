@@ -1,8 +1,8 @@
-import re
-import sys
-import boto3
 import datetime
-from common import save_to_file, load_from_file
+import re
+
+import boto3
+
 
 def get_all_users():
     users = []

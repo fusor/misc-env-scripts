@@ -1,10 +1,8 @@
 # cost models for different dev environments
-import os
-from math import ceil
 from datetime import datetime
-from common import get_all_regions
+from math import ceil
+
 from pricing import get_price_for_instance
-from docs import GoogleDocEditor
 
 models_ec2 = {
     'ocp-dev-3': [
