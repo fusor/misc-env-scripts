@@ -1,19 +1,19 @@
+import logging
 import os
 import re
-import sys
-import pytz
-import logging
-from emailer import Emailer
 from datetime import datetime, timedelta
-from sheet import GoogleSheetEditor
-from ec2 import get_all_instances, reformat_instance_data,\
-    get_all_eips, reformat_eips_data, get_all_unused_volumes,\
+
+import pytz
+
+from cloudformation import delete_stacks
+from ec2 import get_all_instances, reformat_instance_data, \
+    get_all_eips, reformat_eips_data, get_all_unused_volumes, \
     delete_volume, delete_eip, terminate_instance
 from elbs import get_all_elbs, reformat_elbs_data, delete_classic_elb
-from common import save_to_file, load_from_file
+from emailer import Emailer
 from s3 import get_all_buckets, reformat_buckets_data
+from sheet import GoogleSheetEditor
 from vpc import get_all_vpcs, delete_orphan_vpcs
-from cloudformation import delete_stacks
 
 # number of days to qualify an instance as old
 OLD_INSTANCE_THRESHOLD = 30
@@ -73,7 +73,7 @@ def delete_unused_volumes():
 def delete_unassigned_elbs(elbs):
     deleted_elbs = 0
     for elb in elbs:
-        if (elb['Instances'] == 'Unassigned' and elb['Type'] == 'classic'):
+        if elb['Instances'] == 'Unassigned' and elb['Type'] == 'classic':
             response = delete_classic_elb(elb['LoadBalancerName'], elb['Region'])
             if response.get('ResponseMetadata', {}).get('HTTPStatusCode', 500) == 200:
                 deleted_elbs += 1 
@@ -123,13 +123,9 @@ Thank you.<br>
     scheduled = (datetime.utcnow() + timedelta(days=4)).strftime("%a, %b %d, %y")
     unique_owners = {}
     orphan_instances = []
-    instance_list = ""
     for inst in old_instances:
         if 'save' in inst['Saved'].lower():
             continue
-        name = inst.get('Name', '')
-        
-        inst_id = inst.get('InstanceId', '')
         owner = inst.get('owner', 'OwnerNotFound')
         if owner != 'OwnerNotFound' and owner != "":
             guid = inst.get('guid', '')
@@ -141,7 +137,7 @@ Thank you.<br>
                 unique_owners[owner] = {'count': 1, 'guids': [guid]}
         else:
             orphan_instances.append(inst)
-    if (len(unique_owners.keys()) == 0 and len(orphan_instances) == 0):
+    if len(unique_owners.keys()) == 0 and len(orphan_instances) == 0:
         return None
     summary_email = ""
     for k, v in unique_owners.items():
@@ -155,18 +151,16 @@ Thank you.<br>
         summary_email += "<br><br> Total EC2 instances deleted so far: <b>{}</b><br>".format(str(total_ec2_deleted))
     return message.format(sheet_link, sheet_link, scheduled, summary_email)
 
-if __name__ == "__main__":
-    args = sys.argv
+
+def start(argument):
     logging.basicConfig(
         filename='./cleaner.log',
         format='[%(levelname)s] [%(name)s] [%(asctime)s] %(message)s',
-
         level=logging.INFO
     )
     logging.getLogger('boto3').setLevel(logging.ERROR)
     logging.getLogger('botocore').setLevel(logging.ERROR)
     logging.getLogger('googleapiclient').setLevel(logging.ERROR)
-
 
     sheet_id = os.environ['GOOGLE_SHEET_ID']
     allInstancesSheetName = os.environ['SHEET_ALL_INSTANCES']
@@ -199,7 +193,7 @@ if __name__ == "__main__":
 
     skip_summary = False
 
-    if args[1] == 'report':
+    if argument == 'report':
         # update all instances sheet
         instances = get_all_instances()
         instances = reformat_instance_data(instances)
@@ -239,14 +233,15 @@ if __name__ == "__main__":
         # update old buckets sheet
         buckets = prepare_old_s3_buckets_data(allS3Sheet, oldS3Sheet)
         print(oldS3Sheet.save_data_to_sheet(buckets))
-    
-    elif args[1] == 'purge_instances':
+
+    elif argument == 'purge_instances':
         numberOfInstancesDeleted = terminate_instances(oldInstancesSheet, allInstancesSheet)
         summaryRow['EC2 Cleanup'] = 'Deleted {} instances'.format(numberOfInstancesDeleted)
         delete_stacks()
 
-    elif args[1] == 'generate_ec2_deletion_summary':
+    elif argument == 'generate_ec2_deletion_summary':
         summaryEmail = get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet, summarySheet)
+        print("SummaryEmail", summaryEmail)
         if summaryEmail is not None:
             smtp_addr = os.environ['SMTP_ADDR']
             smtp_username = os.environ['SMTP_USERNAME']
@@ -256,13 +251,12 @@ if __name__ == "__main__":
             emailer = Emailer(smtp_addr, smtp_username, smtp_password)
             emailer.send_email(smtp_sender, smtp_receivers, 'AWS Cleanup Notification', summaryEmail)
         skip_summary = True
-    
-    elif args[1] == 'purge_vpcs':
+
+    elif argument == 'purge_vpcs':
         numberOfVpcsDeleted = delete_vpcs()
         summaryRow['VPC Cleanup'] = 'Deleted {} vpcs'.format(numberOfVpcsDeleted)
         numberOfEipsDeleted = delete_unassigned_eips(get_all_eips())
         summaryRow['EC2 Cleanup'] = 'Deleted {} eips'.format(numberOfEipsDeleted)
-
     else:
         pass
 

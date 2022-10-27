@@ -1,8 +1,9 @@
-import sys
-import boto3
 import logging
-import boto3.session
 from time import sleep
+
+import boto3
+import boto3.session
+
 from common import get_all_regions
 
 logger = logging.getLogger(__name__)
