@@ -44,7 +44,7 @@ def reformat_elbs_data(elbs):
                 az = elb['AvailabilityZones'][0]['ZoneName']
             else:
                 az = elb['AvailabilityZones'][0]
-            elb['Region'] = re.sub(r'(\w+)-(\w+)-(\d)\w+', "\g<1>-\g<2>-\g<3>", az)
+            elb['Region'] = re.sub(r'(\w+)-(\w+)-(\d)\w+', r"\g<1>-\g<2>-\g<3>", az)
         elb['TotalBill'] = "${}".format(calculate_bill_for_elb(elb['Type'], elb['Region'], elb['CreatedTime'])[2])
         elb['CostPerDay'] = "${}".format(calculate_bill_for_elb(elb['Type'], elb['Region'], elb['CreatedTime'])[1])
         if 'AvailabilityZones' in elb:

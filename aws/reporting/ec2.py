@@ -6,6 +6,17 @@ from common import reformat_data, get_all_regions
 
 logger = logging.getLogger(__name__)
 
+EC2_KEYS = [
+    'InstanceId',
+    'InstanceType',
+    'Placement.AvailabilityZone',
+    'LaunchTime',
+    'IamInstanceProfile.Arn',
+    'Tags.owner',
+    'Tags.Name',
+    'Tags.guid'
+]
+
 def get_all_instances():
     all_instances = []
     for r in get_all_regions():
@@ -25,19 +36,9 @@ def get_instances_per_region(region):
     return instances
 
 def reformat_instance_data(raw_instances):
-    keys = [
-        'InstanceId',
-        'InstanceType',
-        'Placement.AvailabilityZone',
-        'LaunchTime',
-        'IamInstanceProfile.Arn',
-        'Tags.owner',
-        'Tags.Name',
-        'Tags.guid'
-    ]
-    formatted_instances = reformat_data(raw_instances, keys)
+    formatted_instances = reformat_data(raw_instances, EC2_KEYS)
     for inst in formatted_instances:
-        region = re.sub(r'(\w+)-(\w+)-(\d)\w+', "\g<1>-\g<2>-\g<3>", inst["AvailabilityZone"])
+        region = re.sub(r'(\w+)-(\w+)-(\d)\w+', r"\g<1>-\g<2>-\g<3>", inst["AvailabilityZone"])
         instance_type = inst['InstanceType']
         launch_time = inst['LaunchTime']
         try:

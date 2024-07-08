@@ -66,12 +66,12 @@ def _ec2_pricing_filters(instance_type, region_code):
         {
             'Field': 'location',
             'Type': 'TERM_MATCH',
-            'Value': _region_filter_map()[region_code]
+            'Value': _region_filter_map().get(region_code, 'US East (N. Virginia)')
         },
         {
             'Field': 'usageType',
             'Type': 'TERM_MATCH',
-            'Value': _ec2_usage_filter_map(instance_type)[region_code]
+            'Value': _ec2_usage_filter_map(instance_type).get(region_code, 'US East (N. Virginia)')
         },
         {
             'Field': 'tenancy',
@@ -88,7 +88,7 @@ def _elb_pricing_filters(elb_type, region_code):
         {
             'Field': 'location',
             'Type': 'TERM_MATCH',
-            'Value': _region_filter_map()[region_code]
+            'Value': _region_filter_map().get(region_code, 'US East (N. Virginia)')
         },
         {
             'Field': 'operation',
