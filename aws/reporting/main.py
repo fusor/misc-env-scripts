@@ -8,7 +8,7 @@ import pytz
 from cloudformation import delete_stacks
 from ec2 import get_all_instances, reformat_instance_data, \
     get_all_eips, reformat_eips_data, get_all_unused_volumes, \
-    delete_volume, delete_eip, terminate_instance
+    delete_volume, delete_eip, terminate_instance, EC2_KEYS
 from elbs import get_all_elbs, reformat_elbs_data, delete_classic_elb
 from emailer import Emailer
 from s3 import get_all_buckets, reformat_buckets_data
@@ -32,6 +32,19 @@ def prepare_old_instances_data(all_instances_sheet, old_instances_sheet, tdelta=
             instance['Saved'] = existing_old_instances.get(instance['InstanceId'], {}).get('Saved', '')
             instance['Notes'] = existing_old_instances.get(instance['InstanceId'], {}).get('Notes', '')
             old_instances.append(instance)
+    if not old_instances:
+        dummy_old_instance = {}
+        for key in EC2_KEYS:
+            split_keys = key.split('.')
+            if len(split_keys) == 1:
+                dummy_old_instance[key] = ''
+            else:
+                dummy_old_instance[split_keys[-1]] = ''
+        dummy_old_instance['TotalBill'] = ''
+        dummy_old_instance['Cost Per Day'] = ''
+        dummy_old_instance['Saved'] = ''
+        dummy_old_instance['Notes'] = ''
+        return [dummy_old_instance]
     return old_instances
 
 def prepare_old_s3_buckets_data(all_s3_buckets_sheet, old_s3_buckets_sheet):
@@ -53,7 +66,7 @@ def terminate_instances(old_instances_sheet, all_instances_sheet):
     for inst in old_instances:
         if 'save' not in inst['Saved'].lower():
             instance_id = inst['InstanceId']
-            instance_region = re.sub(r'(\w+)-(\w+)-(\d)\w+', "\g<1>-\g<2>-\g<3>", inst["AvailabilityZone"])
+            instance_region = re.sub(r'(\w+)-(\w+)-(\d)\w+', r"\g<1>-\g<2>-\g<3>", inst["AvailabilityZone"])
             instance_ids.append([instance_id, instance_region])
     for inst in instance_ids:
         response = terminate_instance(inst[0], inst[1])
@@ -262,3 +275,4 @@ def start(argument):
 
     if not skip_summary:
         summarySheet.append_data_to_sheet([summaryRow])
+

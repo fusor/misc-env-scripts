@@ -50,11 +50,11 @@ class GoogleSheetEditor():
 
     def read_custom(self, start, end, indexField=None):
         return self.client.service.spreadsheets().values().get(
-            spreadsheetId=self.sheet_id, range=self.get_custom_range(start, end)).execute()['values']
+            spreadsheetId=self.sheet_id, range=self.get_custom_range(start, end)).execute().get('values', [])
 
     def read_spreadsheet(self, indexField=None):
         return self.from_sheet_data(self.client.service.spreadsheets().values().get(
-            spreadsheetId=self.sheet_id, range=self.get_sheet_range()).execute()['values'], indexField)
+            spreadsheetId=self.sheet_id, range=self.get_sheet_range()).execute().get('values', []), indexField)
     
     def load_data_from_sheet(self):
         return self.from_sheet_data(self.sheet.get('values', []))
