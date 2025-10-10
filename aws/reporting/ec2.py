@@ -17,6 +17,10 @@ EC2_KEYS = [
     'Tags.guid'
 ]
 
+EXCLUDED_VOLUME_TAGS = {
+    "kubernetes.io/created-for/pvc/namespace": "openshift-virtualization-os-images"
+}
+
 def get_all_instances():
     all_instances = []
     for r in get_all_regions():
@@ -101,6 +105,9 @@ def get_all_unused_volumes():
         ]
         for vol in client.describe_volumes(Filters=filters)['Volumes']:
             vol['Region'] = region
+            if any(tag.get('Key') == key and tag.get('Value') == value for tag in vol.get('Tags', []) for key, value in EXCLUDED_VOLUME_TAGS.items()):
+                logger.info("{} Found excluded vol {}".format(region, vol))
+                continue
             vols.append(vol)
             logger.info("{} Found unused vol {}".format(region, vol))
         all_volumes.extend(vols)
