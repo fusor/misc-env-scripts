@@ -2,7 +2,9 @@ import datetime
 import re
 
 import boto3
+import logging
 
+logger = logging.getLogger(__name__)
 
 def get_all_users():
     users = []
@@ -27,7 +29,7 @@ def get_old_users(users, createdThreshold=60, lastUsedThreshold=120):
     old_users = []
     i = 1
     for user in users:
-        print("{} Analyzing user {}".format(i, user['UserName']))
+        logger.info("{} Analyzing user {}".format(i, user['UserName']))
         userResource = boto3.resource('iam').User(user['UserName'])
         allUsageDates = []
         if isinstance(userResource.password_last_used, datetime.date):
@@ -44,44 +46,62 @@ def get_old_users(users, createdThreshold=60, lastUsedThreshold=120):
             usedThresholdAgo = False
         if createdThresholdAgo and usedThresholdAgo and not re.match(r'[^@]+@[^@]+\.[^@]+', user['UserName']):
             old_users.append(user)
-            print("User {} is old".format(user["UserName"]))
+            logger.info("User {} is old".format(user["UserName"]))
         i += 1 
     return old_users
 
+def get_users_for_a_cluster(users):
+    filtered_users = []
+    for user in users:
+        print(user)
+        logger.info("Analyzing user {}".format(user['UserName']))
+        if user.get("UserName", "").startswith("cluster-"):
+            filtered_users.append(user)
+    return filtered_users
+
 def delete_user(user):
-    print("Attempting to delete user {}".format(user['UserName']))
+    logger.info("Attempting to delete user {}".format(user['UserName']))
     iamRes = boto3.resource('iam')
     userRes = iamRes.User(user['UserName'])
     try:
         login_profile = userRes.LoginProfile()
         login_profile.delete()
     except Exception as e:
-        print("Failed deleting login profile {}".format(str(e)))
+        logger.info("Failed deleting login profile {}".format(str(e)))
     for key in userRes.access_keys.all():
         try:
             key.delete()
         except:
-            print("Failed deleting key")
+            logger.info("Failed deleting key")
     for policy in userRes.policies.all():
         try:
             policy.delete()
         except:
-            print("Failed deleting policy")
+            logger.info("Failed deleting policy")
     for policy in userRes.attached_policies.all():
         try:
             policy.delete()
         except:
-            print("Failed deleting policy")
+            logger.info("Failed deleting policy")
     try:
         userRes.delete()
-        print("Deleted user")
+        logger.info("Deleted user")
     except:
-        print("Failed deleting user")
+        logger.info("Failed deleting user")
 
-users = get_all_users()
-old_users = get_old_users(users)
-for user in old_users:
-    try:
-        delete_user(user)
-    except:
-        print("Failed deleting user {}".format(user['UserName']))
+if __name__ == "__main__":
+    import sys
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler(sys.stderr)
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    users = get_all_users()
+    users_to_delete = get_users_for_a_cluster(users)
+    for user in users_to_delete:
+        try:
+            delete_user(user)
+        except:
+            logger.info("Failed deleting user {}".format(user['UserName']))

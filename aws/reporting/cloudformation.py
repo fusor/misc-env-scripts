@@ -10,10 +10,9 @@ AWS_EKS_MANAGED_TAGS = ["alpha.eksctl.io/cluster-name"]
 
 logger = logging.getLogger(__name__)
 
-def get_deleteable_cf_templates(client):
-    deleteable_stacks = []
-    response = client.describe_stacks()
-    for stack in response.get('Stacks', []):
+def default_filter(client, stacks):
+    filtered_stacks = []
+    for stack in stacks:
         stackName = stack.get("StackName", "")
         if stackName != "":
             is_eks_managed = False
@@ -23,12 +22,20 @@ def get_deleteable_cf_templates(client):
                     logger.info("{} Found EKS managed stack {}".format(client.meta.region_name, stackName))
             if not is_eks_managed:
                 if stack.get('StackStatus', '') in DELETEABLE_STATUS:
-                    deleteable_stacks.append(stack)
+                    filtered_stacks.append(stack)
                     logger.info("{} Found stack with deleteable status {}".format(client.meta.region_name, stackName))
                 elif not does_cf_template_have_ec2_instances(client, stackName):
-                    deleteable_stacks.append(stack)
+                    filtered_stacks.append(stack)
                     logger.info("{} Found stack without instances {}".format(client.meta.region_name, stackName))
-    return deleteable_stacks
+    return filtered_stacks
+
+def no_filter(client, stacks):
+    return stacks
+
+def get_deleteable_cf_templates(client, filter_func=default_filter):
+    deleteable_stacks = []
+    response = client.describe_stacks()
+    return filter_func(client, response.get('Stacks', []))
 
 def does_cf_template_have_ec2_instances(client, stack_name: str):
     for resource in client.describe_stack_resources(StackName=stack_name)['StackResources']:
@@ -36,10 +43,10 @@ def does_cf_template_have_ec2_instances(client, stack_name: str):
             return True
     return False
 
-def delete_stacks(dry_run = False):
+def delete_stacks(dry_run = False, filter_func=default_filter):
     for region in get_all_regions():
         client = boto3.client('cloudformation', region_name=region)
-        stacks = get_deleteable_cf_templates(client)
+        stacks = get_deleteable_cf_templates(client, filter_func=filter_func)
         for stack in stacks:
             stackName = stack.get("StackName", "")
             if stackName != "":
@@ -50,3 +57,14 @@ def delete_stacks(dry_run = False):
                     logger.info("{} Deleted stack {}".format(region, stackName))
                 except:
                     logger.info("{} Failed deleting stack {}".format(region, stackName))
+
+if __name__ == "__main__":
+    import sys
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler(sys.stderr)
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    delete_stacks(filter_func=no_filter)

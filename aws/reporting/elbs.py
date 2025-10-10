@@ -62,3 +62,16 @@ def delete_classic_elb(elb_name, region):
         logger.info("{} Error deleting elb {}".format(region, elb_name))
         logger.error(str(e))
     return response
+
+if __name__ == "__main__":
+    import sys
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler(sys.stderr)
+    console_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    for elb in reformat_elbs_data(get_all_elbs()):
+        if elb.get("Region", "") != "" and elb.get("LoadBalancerName", "") != "":
+            response = delete_classic_elb(elb['LoadBalancerName'], elb['Region'])

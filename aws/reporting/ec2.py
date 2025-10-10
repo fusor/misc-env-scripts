@@ -17,6 +17,10 @@ EC2_KEYS = [
     'Tags.guid'
 ]
 
+EXCLUDED_VOLUME_TAGS = {
+    "kubernetes.io/created-for/pvc/namespace": "openshift-virtualization-os-images"
+}
+
 def get_all_instances():
     all_instances = []
     for r in get_all_regions():
@@ -49,6 +53,17 @@ def reformat_instance_data(raw_instances):
             inst['Cost Per Day'] = "${}".format(calculate_bill_for_instance(instance_type, region, launch_time)[1])
         except:
             inst['Cost Per Day'] = "$0"
+    if not formatted_instances:
+        dummy_old_instance = {}
+        for key in EC2_KEYS:
+            split_keys = key.split('.')
+            if len(split_keys) == 1:
+                dummy_old_instance[key] = ''
+            else:
+                dummy_old_instance[split_keys[-1]] = ''
+        dummy_old_instance['TotalBill'] = ''
+        dummy_old_instance['Cost Per Day'] = ''
+        return [dummy_old_instance]
     return formatted_instances
 
 def get_all_eips():
@@ -90,6 +105,9 @@ def get_all_unused_volumes():
         ]
         for vol in client.describe_volumes(Filters=filters)['Volumes']:
             vol['Region'] = region
+            if any(tag.get('Key') == key and tag.get('Value') == value for tag in vol.get('Tags', []) for key, value in EXCLUDED_VOLUME_TAGS.items()):
+                logger.info("{} Found excluded vol {}".format(region, vol))
+                continue
             vols.append(vol)
             logger.info("{} Found unused vol {}".format(region, vol))
         all_volumes.extend(vols)
