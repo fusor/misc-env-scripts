@@ -14,6 +14,9 @@ from emailer import Emailer
 from s3 import get_all_buckets, reformat_buckets_data, delete_bucket
 from sheet import GoogleSheetEditor
 from vpc import get_all_vpcs, delete_orphan_vpcs
+from iam import get_all_users, get_users_for_a_cluster, delete_user
+from route53 import delete_hosted_zones
+
 
 # number of days to qualify an instance as old
 OLD_INSTANCE_THRESHOLD = 30
@@ -174,7 +177,7 @@ def start(argument):
     logging.getLogger('boto3').setLevel(logging.ERROR)
     logging.getLogger('botocore').setLevel(logging.ERROR)
     logging.getLogger('googleapiclient').setLevel(logging.ERROR)
-
+    logger = logging.getLogger(__name__)
     sheet_id = os.environ['GOOGLE_SHEET_ID']
     allInstancesSheetName = os.environ['SHEET_ALL_INSTANCES']
     oldInstancesSheetName = os.environ['SHEET_OLD_INSTANCES']
@@ -215,15 +218,15 @@ def start(argument):
             if instance['Cost Per Day']:
                 instances_daily_bill += float(re.sub(r'\$', '', instance['Cost Per Day']))
         summaryRow['EC2 Daily Cost'] = "${}".format(str(instances_daily_bill))
-        print(allInstancesSheet.save_data_to_sheet(instances))
+        logger.info(allInstancesSheet.save_data_to_sheet(instances))
         # update old instance sheet
         instances = prepare_old_instances_data(allInstancesSheet, oldInstancesSheet)
-        print(oldInstancesSheet.save_data_to_sheet(instances))
+        logger.info(oldInstancesSheet.save_data_to_sheet(instances))
 
         # update eips sheet
         eips = get_all_eips()
         eips = reformat_eips_data(eips)
-        print(allEipsSheet.save_data_to_sheet(eips))
+        logger.info(allEipsSheet.save_data_to_sheet(eips))
 
         # update elbs sheet
         elbs = get_all_elbs()
@@ -234,7 +237,7 @@ def start(argument):
         for elb in elbs:
             elbs_daily_bill += float(re.sub(r'\$', '', elb['CostPerDay']))
         summaryRow['ELBs Daily Cost'] = "${}".format(str(elbs_daily_bill))
-        print(allElbsSheet.save_data_to_sheet(elbs))
+        logger.info(allElbsSheet.save_data_to_sheet(elbs))
 
         # delete old volumes
         numberOfVolumesDeleted = delete_unused_volumes()
@@ -243,10 +246,10 @@ def start(argument):
         # update all buckets sheet
         buckets = get_all_buckets()
         buckets = reformat_buckets_data(buckets)
-        print(allS3Sheet.save_data_to_sheet(buckets))
+        logger.info(allS3Sheet.save_data_to_sheet(buckets))
         # update old buckets sheet
         buckets = prepare_old_s3_buckets_data(allS3Sheet, oldS3Sheet)
-        print(oldS3Sheet.save_data_to_sheet(buckets))
+        logger.info(oldS3Sheet.save_data_to_sheet(buckets))
 
     elif argument == 'purge_instances':
         numberOfInstancesDeleted = terminate_instances(oldInstancesSheet, allInstancesSheet)
@@ -263,7 +266,7 @@ def start(argument):
 
     elif argument == 'generate_ec2_deletion_summary':
         summaryEmail = get_old_instances_email_summary(oldInstancesSheet, allInstancesSheet, summarySheet)
-        print("SummaryEmail", summaryEmail)
+        logger.info("SummaryEmail", summaryEmail)
         if summaryEmail is not None:
             smtp_addr = os.environ['SMTP_ADDR']
             smtp_username = os.environ['SMTP_USERNAME']
@@ -279,9 +282,20 @@ def start(argument):
         summaryRow['VPC Cleanup'] = 'Deleted {} vpcs'.format(numberOfVpcsDeleted)
         numberOfEipsDeleted = delete_unassigned_eips(get_all_eips())
         summaryRow['EC2 Cleanup'] = 'Deleted {} eips'.format(numberOfEipsDeleted)
+    elif argument == 'purge_iam':
+        users = get_all_users()
+        users_to_delete = get_users_for_a_cluster(users)
+        deleted_users = 0
+        for user in users_to_delete:
+            try:
+                delete_user(user)
+                deleted_users += 1
+            except:
+                pass
+    elif argument == 'purge_route53':
+        delete_hosted_zones()
     else:
         pass
 
     if not skip_summary:
         summarySheet.append_data_to_sheet([summaryRow])
-

@@ -53,7 +53,6 @@ def get_old_users(users, createdThreshold=60, lastUsedThreshold=120):
 def get_users_for_a_cluster(users):
     filtered_users = []
     for user in users:
-        print(user)
         logger.info("Analyzing user {}".format(user['UserName']))
         if user.get("UserName", "").startswith("cluster-"):
             filtered_users.append(user)

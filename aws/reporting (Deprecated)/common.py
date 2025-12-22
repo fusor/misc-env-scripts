@@ -6,13 +6,13 @@ import pickle
 import pprint
 import pytz 
 import sys
-
+import logging
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-
+logger = logging.getLogger(__name__)
 SPREADSHEET_ID = '1XOMu12uPJgtX_gN3mUTQu89kArzBft4edhbkXqlae5M'
 
 #For spreadsheet of older instances
@@ -104,7 +104,7 @@ def estimate_cost(instance):
     # We want to warn if we can't find the cost of a certain instance but we want to continue
     # with processing the report for rest of instances.
     if instance_type not in HOUR_COSTS:
-        print("\n **** \n\n\n *** *** Can't find cost for '%s' *** *** \n\n\n **** \n" % (instance_type))
+        logger.info("\n **** \n\n\n *** *** Can't find cost for '%s' *** *** \n\n\n **** \n" % (instance_type))
 
     hour_cost = HOUR_COSTS[instance_type]
     cost_to_date = int(hours) * float(HOUR_COSTS[instance_type])
@@ -192,7 +192,7 @@ def delete_prior_entries_from_spreadsheet(sheet_service, sheet_range):
 
     request = sheet_service.values().batchClear(spreadsheetId=SPREADSHEET_ID, body=batch_clear_values_request_body)
     response = request.execute()
-    print("Result from clearing prior entries:  %s" % (response))
+    logger.info("Result from clearing prior entries:  %s" % (response))
 
 
 def update_summary_spreadsheet(sheet_service, instances):
@@ -205,19 +205,19 @@ def update_summary_spreadsheet(sheet_service, instances):
     ]
     body = {
         'values': values
-    }
-    print("Summary Header:  Attempting to write <%s>" % (body))
+    }   
+    logger.info("Summary Header:  Attempting to write <%s>" % (body))
     result = sheet_service.values().update(
         spreadsheetId=SPREADSHEET_ID, range='Summary!A1:Z',
         valueInputOption='USER_ENTERED', body=body).execute()
-    print('{0} rows and {1} cells updated.'.format(result.get('updatedRows'), result.get('updatedCells')))
+    logger.info('{0} rows and {1} cells updated.'.format(result.get('updatedRows'), result.get('updatedCells')))
      
     # Compute the estimated daily cost and insert it as a new row
     estimated_daily_cost = 0.0
     for inst in instances:
         cost = estimate_cost(inst)
         daily_cost = 24.0 * float(cost[0])
-        print("Adding %s to daily cost of %s" % (daily_cost, estimated_daily_cost))
+        logger.info("Adding %s to daily cost of %s" % (daily_cost, estimated_daily_cost))
         estimated_daily_cost += daily_cost
     
     now = datetime.datetime.now(eastern_tz).strftime("%Y %B %d %H:%M:%S")
@@ -228,13 +228,13 @@ def update_summary_spreadsheet(sheet_service, instances):
         'values': values
     }
 
-    print("Summary Row:  Attempting to write <%s>" % (body))
+    logger.info("Summary Row:  Attempting to write <%s>" % (body))
     result = sheet_service.values().append(
        spreadsheetId=SPREADSHEET_ID, range='Summary!A3',
        valueInputOption='USER_ENTERED', 
        insertDataOption='INSERT_ROWS',
        body=body).execute()
-    print('{0} rows and {1} cells updated.'.format(result.get('updatedRows'), result.get('updatedCells')))
+    logger.info('{0} rows and {1} cells updated.'.format(result.get('updatedRows'), result.get('updatedCells')))
 
 def update_all_running_spreadsheet(sheet_service, instances):
     labels = ALL_LABELS
@@ -272,7 +272,7 @@ def update_all_running_spreadsheet(sheet_service, instances):
     result = sheet_service.values().update(
         spreadsheetId=SPREADSHEET_ID, range='All Instances!B1:Z',
         valueInputOption='USER_ENTERED', body=body).execute()
-    print('{0} rows and {1} cells updated.'.format(result.get('updatedRows'), result.get('updatedCells')))
+    logger.info('{0} rows and {1} cells updated.'.format(result.get('updatedRows'), result.get('updatedCells')))
 
 
 def update_spreadsheet(sheet_service, instances):
@@ -281,7 +281,7 @@ def update_spreadsheet(sheet_service, instances):
     # Overwrite all instance data in spreadsheet
     
     if len(instances) < 1:
-        print("Unable to process zero length instances")
+        logger.info("Unable to process zero length instances")
         sys.exit()
 
     
@@ -320,15 +320,15 @@ def update_spreadsheet(sheet_service, instances):
     body = {
         'values': values
     }
-    print(body)
-    print (labels)
+    logger.info(body)
+    logger.info(labels)
 
     delete_prior_entries_from_spreadsheet(sheet_service, 'Older Instances!B3:Z')
     range_name = get_range_instances_start()    
     result = sheet_service.values().update(
         spreadsheetId=SPREADSHEET_ID, range=range_name,
         valueInputOption='USER_ENTERED', body=body).execute()
-    print('{0} rows and {1} cells updated.'.format(result.get('updatedRows'), result.get('updatedCells')))
+    logger.info('{0} rows and {1} cells updated.'.format(result.get('updatedRows'), result.get('updatedCells')))
 
 
 def get_all_region_names():

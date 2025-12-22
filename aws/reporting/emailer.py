@@ -1,5 +1,8 @@
 from smtplib import SMTP_SSL as SMTP
 from email.mime.text import MIMEText
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Emailer(object):
     def __init__(self, smtp_addr, username, password):
@@ -18,10 +21,8 @@ class Emailer(object):
         try:
             self.conn.login(self.username, self.password)
             self.conn.sendmail(sender, receivers, msg.as_string())
-            print(sender)
-            print(receivers)
         except Exception as e:
-            print(str(e))
+            logger.error(str(e))   
         finally:
             self.conn.quit()
         
